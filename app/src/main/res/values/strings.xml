@@ -1,0 +1,11 @@
+<resources>
+    <string name="app_name">Spatial DAW</string>
+    <string name="sign_in_title">Masuk ke Spatial DAW</string>
+    <string name="sign_in_subtitle">Sinkronkan proyek multi-track, preset 8D, dan kolaborasi produser secara real-time.</string>
+    <string name="sign_in_google">Masuk dengan Google</string>
+    <string name="tab_mixer">Mixer &amp; Synth</string>
+    <string name="tab_spatial">8D Radar</string>
+    <string name="tab_eq">EQ &amp; Plugin</string>
+    <string name="tab_youtube">YouTube</string>
+    <string name="tab_collab">Cloud &amp; Ekspor</string>
+</resources>

@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Outer 8D Orbital Ring -->
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M54,28 A26,26 0 1,1 53.99,28 Z"
+        android:strokeWidth="3.5"
+        android:strokeColor="#00F3FF" />
+    <!-- Secondary Spatial Arc -->
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M36,36 A25,25 0 0,1 72,36"
+        android:strokeWidth="2.5"
+        android:strokeColor="#AB00FF" />
+    <!-- Orbiting Emitter Dot -->
+    <path
+        android:fillColor="#FFCC00"
+        android:pathData="M54,24 A4,4 0 1,1 53.99,24 Z" />
+    <!-- 5-Band Studio Equalizer Bars inside Safe Zone -->
+    <path
+        android:fillColor="#00F3FF"
+        android:pathData="M39,49 h4 v14 h-4 z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M45.5,42 h4 v24 h-4 z" />
+    <path
+        android:fillColor="#FF0077"
+        android:pathData="M52,37 h4 v34 h-4 z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M58.5,44 h4 v20 h-4 z" />
+    <path
+        android:fillColor="#00F3FF"
+        android:pathData="M65,48 h4 v15 h-4 z" />
+</vector>

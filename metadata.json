@@ -1,0 +1,6 @@
+{
+  "name": "Spatial DAW",
+  "description": "Multi-track DAW & DSP studio with YouTube player, low-latency audio plugins, real-time EQ spectrum, 8D spatial radar, high-quality WAV export, and cloud project collaboration.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

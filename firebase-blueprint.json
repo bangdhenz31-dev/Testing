@@ -1,0 +1,231 @@
+{
+  "entities": {
+    "DawProject": {
+      "title": "DawProject",
+      "description": "Collaborative multi-track DAW & 8D spatial DSP studio project configuration.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "description": "Firebase Auth UID of the project creator."
+        },
+        "ownerName": {
+          "type": "string",
+          "description": "Display name of the project creator."
+        },
+        "memberUids": {
+          "type": "array",
+          "description": "Bounded list (max 10) of collaborator UIDs with access to this project."
+        },
+        "inviteCode": {
+          "type": "string",
+          "description": "Shareable alphanumeric invite code for joining the project."
+        },
+        "title": {
+          "type": "string",
+          "description": "Project title."
+        },
+        "bpm": {
+          "type": "integer",
+          "description": "Project tempo in beats per minute (40-240)."
+        },
+        "spatialPattern": {
+          "type": "string",
+          "enum": ["CIRCULAR", "WAVE", "FIGURE8", "PULSE"],
+          "description": "Active 8D/9D spatial motion pattern."
+        },
+        "orbitSpeedHz": {
+          "type": "number",
+          "description": "Spatial orbit speed in Hz."
+        },
+        "orbitRadiusMeters": {
+          "type": "number",
+          "description": "Spatial soundstage radius in meters."
+        },
+        "reverbMix": {
+          "type": "number",
+          "description": "Cathedral reverb wet mix ratio (0.0 - 1.0)."
+        },
+        "bassBoostDb": {
+          "type": "number",
+          "description": "Deep bass enhancer gain in dB (0.0 - 18.0)."
+        },
+        "eqBandsDb": {
+          "type": "array",
+          "description": "5-band equalizer gains in dB (-12.0 to 12.0)."
+        },
+        "compressorEnabled": {
+          "type": "boolean",
+          "description": "Whether the dynamics compressor plugin is enabled."
+        },
+        "compressorThresholdDb": {
+          "type": "number",
+          "description": "Compressor threshold in dB (-40.0 to 0.0)."
+        },
+        "delayEnabled": {
+          "type": "boolean",
+          "description": "Whether the stereo ping-pong delay plugin is enabled."
+        },
+        "delayMix": {
+          "type": "number",
+          "description": "Delay wet mix (0.0 - 1.0)."
+        },
+        "limiterEnabled": {
+          "type": "boolean",
+          "description": "Whether the master soft-clip limiter is enabled."
+        },
+        "latencyFrames": {
+          "type": "integer",
+          "description": "Audio buffer size in frames for low-latency tuning (64-2048)."
+        },
+        "youtubeVideoId": {
+          "type": "string",
+          "description": "Embedded YouTube track ID."
+        },
+        "youtubeTitle": {
+          "type": "string",
+          "description": "Embedded YouTube track title."
+        },
+        "synthGain": {
+          "type": "number",
+          "description": "Synth/sequencer track fader gain."
+        },
+        "clipGain": {
+          "type": "number",
+          "description": "Audio clip track fader gain."
+        },
+        "micGain": {
+          "type": "number",
+          "description": "Live mic channel gain."
+        },
+        "masterGain": {
+          "type": "number",
+          "description": "Master bus fader gain."
+        },
+        "stepPattern": {
+          "type": "array",
+          "description": "16-step synth pattern velocities (0-3)."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of creation (FieldValue.serverTimestamp())."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of last update (FieldValue.serverTimestamp())."
+        }
+      },
+      "required": [
+        "ownerId",
+        "ownerName",
+        "memberUids",
+        "inviteCode",
+        "title",
+        "bpm",
+        "spatialPattern",
+        "orbitSpeedHz",
+        "orbitRadiusMeters",
+        "reverbMix",
+        "bassBoostDb",
+        "eqBandsDb",
+        "compressorEnabled",
+        "compressorThresholdDb",
+        "delayEnabled",
+        "delayMix",
+        "limiterEnabled",
+        "latencyFrames",
+        "youtubeVideoId",
+        "youtubeTitle",
+        "synthGain",
+        "clipGain",
+        "micGain",
+        "masterGain",
+        "stepPattern",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "ProjectInvite": {
+      "title": "ProjectInvite",
+      "description": "Invite lookup mapping an 8-character code to a collaborative DAW project.",
+      "type": "object",
+      "properties": {
+        "projectId": {
+          "type": "string",
+          "description": "Target project document ID."
+        },
+        "projectTitle": {
+          "type": "string",
+          "description": "Title of the target project."
+        },
+        "ownerId": {
+          "type": "string",
+          "description": "UID of the project owner."
+        },
+        "ownerName": {
+          "type": "string",
+          "description": "Name of the project owner."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of creation (FieldValue.serverTimestamp())."
+        }
+      },
+      "required": ["projectId", "projectTitle", "ownerId", "ownerName", "createdAt"]
+    },
+    "ProjectNote": {
+      "title": "ProjectNote",
+      "description": "Real-time collaborator production note attached to a DAW project.",
+      "type": "object",
+      "properties": {
+        "projectId": {
+          "type": "string",
+          "description": "Parent project document ID."
+        },
+        "authorId": {
+          "type": "string",
+          "description": "UID of note author."
+        },
+        "authorName": {
+          "type": "string",
+          "description": "Display name of note author."
+        },
+        "message": {
+          "type": "string",
+          "description": "Collaboration note body."
+        },
+        "barPosition": {
+          "type": "integer",
+          "description": "Musical bar marker (1-128)."
+        },
+        "memberUids": {
+          "type": "array",
+          "description": "Denormalized member UIDs from parent project."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of creation (FieldValue.serverTimestamp())."
+        }
+      },
+      "required": ["projectId", "authorId", "authorName", "message", "barPosition", "memberUids", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/projects/{projectId}": {
+      "schema": { "$ref": "#/entities/DawProject" },
+      "description": "Collaborative multi-track DAW projects."
+    },
+    "/projects/{projectId}/notes/{noteId}": {
+      "schema": { "$ref": "#/entities/ProjectNote" },
+      "description": "Real-time collaboration notes for a DAW project."
+    },
+    "/projectInvites/{inviteCode}": {
+      "schema": { "$ref": "#/entities/ProjectInvite" },
+      "description": "Invite lookup codes for joining collaborative DAW projects."
+    }
+  }
+}

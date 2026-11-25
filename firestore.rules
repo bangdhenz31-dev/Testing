@@ -1,0 +1,198 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global default-deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isNum(v) {
+      return v is int || v is float;
+    }
+
+    function isValidDawProject(data) {
+      return data.ownerId is string && data.ownerId.size() >= 1 && data.ownerId.size() <= 128 &&
+             data.ownerName is string && data.ownerName.size() >= 1 && data.ownerName.size() <= 60 &&
+             data.memberUids is list && data.memberUids.size() >= 1 && data.memberUids.size() <= 10 &&
+             (data.memberUids.size() == 0 || data.memberUids[0] is string) &&
+             data.ownerId in data.memberUids &&
+             data.inviteCode is string && data.inviteCode.matches('^[A-Z0-9]{6,12}$') &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 80 &&
+             data.bpm is int && data.bpm >= 40 && data.bpm <= 240 &&
+             data.spatialPattern in ['CIRCULAR', 'WAVE', 'FIGURE8', 'PULSE'] &&
+             isNum(data.orbitSpeedHz) && data.orbitSpeedHz >= 0.05 && data.orbitSpeedHz <= 2.0 &&
+             isNum(data.orbitRadiusMeters) && data.orbitRadiusMeters >= 1.0 && data.orbitRadiusMeters <= 10.0 &&
+             isNum(data.reverbMix) && data.reverbMix >= 0.0 && data.reverbMix <= 1.0 &&
+             isNum(data.bassBoostDb) && data.bassBoostDb >= 0.0 && data.bassBoostDb <= 18.0 &&
+             data.eqBandsDb is list && data.eqBandsDb.size() == 5 &&
+             isNum(data.eqBandsDb[0]) && isNum(data.eqBandsDb[1]) && isNum(data.eqBandsDb[2]) &&
+             isNum(data.eqBandsDb[3]) && isNum(data.eqBandsDb[4]) &&
+             data.compressorEnabled is bool &&
+             isNum(data.compressorThresholdDb) && data.compressorThresholdDb >= -40.0 && data.compressorThresholdDb <= 0.0 &&
+             data.delayEnabled is bool &&
+             isNum(data.delayMix) && data.delayMix >= 0.0 && data.delayMix <= 1.0 &&
+             data.limiterEnabled is bool &&
+             data.latencyFrames is int && data.latencyFrames >= 64 && data.latencyFrames <= 2048 &&
+             data.youtubeVideoId is string && data.youtubeVideoId.size() <= 32 &&
+             data.youtubeTitle is string && data.youtubeTitle.size() <= 140 &&
+             isNum(data.synthGain) && data.synthGain >= 0.0 && data.synthGain <= 1.5 &&
+             isNum(data.clipGain) && data.clipGain >= 0.0 && data.clipGain <= 1.5 &&
+             isNum(data.micGain) && data.micGain >= 0.0 && data.micGain <= 2.0 &&
+             isNum(data.masterGain) && data.masterGain >= 0.0 && data.masterGain <= 1.5 &&
+             data.stepPattern is list && data.stepPattern.size() == 16 &&
+             data.stepPattern[0] is int;
+    }
+
+    function isValidProjectInvite(data) {
+      return isValidId(data.projectId) &&
+             data.projectTitle is string && data.projectTitle.size() >= 1 && data.projectTitle.size() <= 80 &&
+             data.ownerId is string && data.ownerId.size() >= 1 && data.ownerId.size() <= 128 &&
+             data.ownerName is string && data.ownerName.size() >= 1 && data.ownerName.size() <= 60;
+    }
+
+    function isValidProjectNote(data) {
+      return isValidId(data.projectId) &&
+             data.authorId is string && data.authorId.size() >= 1 && data.authorId.size() <= 128 &&
+             data.authorName is string && data.authorName.size() >= 1 && data.authorName.size() <= 60 &&
+             data.message is string && data.message.size() >= 1 && data.message.size() <= 400 &&
+             data.barPosition is int && data.barPosition >= 1 && data.barPosition <= 128 &&
+             data.memberUids is list && data.memberUids.size() >= 1 && data.memberUids.size() <= 10 &&
+             (data.memberUids.size() == 0 || data.memberUids[0] is string);
+    }
+
+    match /projects/{projectId} {
+      allow get: if isSignedIn() && isValidId(projectId) && request.auth.uid in existing().memberUids;
+      allow list: if isSignedIn() && request.auth.uid in existing().memberUids;
+
+      allow create: if isSignedIn() &&
+                       isValidId(projectId) &&
+                       isValidDawProject(incoming()) &&
+                       incoming().ownerId == request.auth.uid &&
+                       request.auth.uid in incoming().memberUids &&
+                       incoming().memberUids.size() == 1 &&
+                       incoming().keys().hasAll([
+                         'ownerId', 'ownerName', 'memberUids', 'inviteCode', 'title', 'bpm',
+                         'spatialPattern', 'orbitSpeedHz', 'orbitRadiusMeters', 'reverbMix',
+                         'bassBoostDb', 'eqBandsDb', 'compressorEnabled', 'compressorThresholdDb',
+                         'delayEnabled', 'delayMix', 'limiterEnabled', 'latencyFrames',
+                         'youtubeVideoId', 'youtubeTitle', 'synthGain', 'clipGain', 'micGain',
+                         'masterGain', 'stepPattern', 'createdAt', 'updatedAt'
+                       ]) &&
+                       incoming().keys().hasOnly([
+                         'ownerId', 'ownerName', 'memberUids', 'inviteCode', 'title', 'bpm',
+                         'spatialPattern', 'orbitSpeedHz', 'orbitRadiusMeters', 'reverbMix',
+                         'bassBoostDb', 'eqBandsDb', 'compressorEnabled', 'compressorThresholdDb',
+                         'delayEnabled', 'delayMix', 'limiterEnabled', 'latencyFrames',
+                         'youtubeVideoId', 'youtubeTitle', 'synthGain', 'clipGain', 'micGain',
+                         'masterGain', 'stepPattern', 'createdAt', 'updatedAt'
+                       ]) &&
+                       incoming().createdAt is timestamp && incoming().createdAt <= request.time &&
+                       incoming().updatedAt is timestamp && incoming().updatedAt <= request.time;
+
+      allow update: if isSignedIn() &&
+                       isValidId(projectId) &&
+                       isValidDawProject(incoming()) &&
+                       incoming().ownerId == existing().ownerId &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().updatedAt is timestamp && incoming().updatedAt <= request.time &&
+                       (
+                         // Action 1: Existing collaborator edits DAW mix / DSP parameters
+                         (request.auth.uid in existing().memberUids &&
+                          incoming().memberUids == existing().memberUids &&
+                          incoming().inviteCode == existing().inviteCode &&
+                          incoming().diff(existing()).affectedKeys().hasOnly([
+                            'title', 'bpm', 'spatialPattern', 'orbitSpeedHz', 'orbitRadiusMeters',
+                            'reverbMix', 'bassBoostDb', 'eqBandsDb', 'compressorEnabled',
+                            'compressorThresholdDb', 'delayEnabled', 'delayMix', 'limiterEnabled',
+                            'latencyFrames', 'youtubeVideoId', 'youtubeTitle', 'synthGain',
+                            'clipGain', 'micGain', 'masterGain', 'stepPattern', 'updatedAt'
+                          ])) ||
+                         // Action 2: Authenticated user joins project using a valid invite code
+                         (!(request.auth.uid in existing().memberUids) &&
+                          incoming().diff(existing()).affectedKeys().hasOnly(['memberUids', 'updatedAt']) &&
+                          incoming().memberUids.hasAll(existing().memberUids) &&
+                          incoming().memberUids.size() == existing().memberUids.size() + 1 &&
+                          request.auth.uid in incoming().memberUids &&
+                          exists(/databases/$(database)/documents/projectInvites/$(existing().inviteCode)) &&
+                          get(/databases/$(database)/documents/projectInvites/$(existing().inviteCode)).data.projectId == projectId)
+                       );
+
+      allow delete: if isSignedIn() && isValidId(projectId) && existing().ownerId == request.auth.uid;
+
+      match /notes/{noteId} {
+        allow get: if isSignedIn() && isValidId(projectId) && isValidId(noteId) &&
+                      request.auth.uid in existing().memberUids;
+        allow list: if isSignedIn() && isValidId(projectId) &&
+                       request.auth.uid in existing().memberUids;
+
+        allow create: if isSignedIn() &&
+                         isValidId(projectId) &&
+                         isValidId(noteId) &&
+                         isValidProjectNote(incoming()) &&
+                         incoming().projectId == projectId &&
+                         incoming().authorId == request.auth.uid &&
+                         request.auth.uid in incoming().memberUids &&
+                         incoming().keys().hasAll([
+                           'projectId', 'authorId', 'authorName', 'message',
+                           'barPosition', 'memberUids', 'createdAt'
+                         ]) &&
+                         incoming().keys().hasOnly([
+                           'projectId', 'authorId', 'authorName', 'message',
+                           'barPosition', 'memberUids', 'createdAt'
+                         ]) &&
+                         incoming().createdAt is timestamp && incoming().createdAt <= request.time &&
+                         exists(/databases/$(database)/documents/projects/$(projectId)) &&
+                         request.auth.uid in get(/databases/$(database)/documents/projects/$(projectId)).data.memberUids &&
+                         incoming().memberUids == get(/databases/$(database)/documents/projects/$(projectId)).data.memberUids;
+
+        allow update: if false;
+
+        allow delete: if isSignedIn() &&
+                         isValidId(projectId) &&
+                         isValidId(noteId) &&
+                         (existing().authorId == request.auth.uid ||
+                          (exists(/databases/$(database)/documents/projects/$(projectId)) &&
+                           get(/databases/$(database)/documents/projects/$(projectId)).data.ownerId == request.auth.uid));
+      }
+    }
+
+    match /projectInvites/{inviteCode} {
+      allow get: if isSignedIn() && isValidId(inviteCode);
+      allow list: if isSignedIn() && existing().ownerId == request.auth.uid;
+
+      allow create: if isSignedIn() &&
+                       inviteCode.matches('^[A-Z0-9]{6,12}$') &&
+                       isValidProjectInvite(incoming()) &&
+                       incoming().ownerId == request.auth.uid &&
+                       incoming().keys().hasAll([
+                         'projectId', 'projectTitle', 'ownerId', 'ownerName', 'createdAt'
+                       ]) &&
+                       incoming().keys().hasOnly([
+                         'projectId', 'projectTitle', 'ownerId', 'ownerName', 'createdAt'
+                       ]) &&
+                       incoming().createdAt is timestamp && incoming().createdAt <= request.time &&
+                       exists(/databases/$(database)/documents/projects/$(incoming().projectId)) &&
+                       get(/databases/$(database)/documents/projects/$(incoming().projectId)).data.ownerId == request.auth.uid;
+
+      allow update: if false;
+
+      allow delete: if isSignedIn() && isValidId(inviteCode) && existing().ownerId == request.auth.uid;
+    }
+  }
+}
