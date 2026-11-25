@@ -68,6 +68,20 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 
+private fun resolveDefaultWebClientId(context: Context): String? {
+    val resId = context.resources.getIdentifier(
+        "default_web_client_id",
+        "string",
+        context.packageName,
+    )
+    if (resId == 0) return null
+    return try {
+        context.getString(resId).takeIf { it.isNotBlank() }
+    } catch (_: Exception) {
+        null
+    }
+}
+
 fun attemptAutoSignIn(
     context: Context,
     credentialManager: CredentialManager,
@@ -79,9 +93,8 @@ fun attemptAutoSignIn(
         onAuthSuccess()
         return
     }
-    val clientId = try {
-        context.getString(R.string.default_web_client_id)
-    } catch (_: Exception) {
+    val clientId = resolveDefaultWebClientId(context)
+    if (clientId == null) {
         onUnauthenticated()
         return
     }
@@ -118,10 +131,9 @@ fun onGoogleSignInClicked(
     scope: CoroutineScope,
     onAuthCancelled: () -> Unit = {},
 ) {
-    val clientId = try {
-        context.getString(R.string.default_web_client_id)
-    } catch (_: Exception) {
-        onAuthError("Konfigurasi Google Sign-In tidak ditemukan.")
+    val clientId = resolveDefaultWebClientId(context)
+    if (clientId == null) {
+        onAuthError("Konfigurasi Google Sign-In (google-services.json) belum tersedia pada build APK ini.")
         return
     }
     val signInOption = GetSignInWithGoogleOption.Builder(serverClientId = clientId).build()
@@ -321,3 +333,75 @@ fun AuthScreen(
         }
     }
 }
+
+@Composable
+fun FirebaseConfigMissingScreen() {
+    val colors = StudioTheme.colors
+    val onNeon = if (colors.neon.luminance() > 0.45f) Color.Black else Color.White
+
+    Scaffold(
+        containerColor = colors.bg,
+    ) { innerPadding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.radialGradient(
+                        colors = listOf(
+                            colors.purple.copy(alpha = if (colors.isLight) 0.16f else 0.25f),
+                            colors.bg,
+                        )
+                    )
+                )
+                .padding(innerPadding)
+                .padding(24.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .widthIn(max = 460.dp)
+                    .testTag("firebase_config_missing_card"),
+                shape = RoundedCornerShape(24.dp),
+                colors = CardDefaults.cardColors(containerColor = colors.surface.copy(alpha = 0.94f)),
+                border = BorderStroke(1.dp, colors.border),
+            ) {
+                Column(
+                    modifier = Modifier.padding(28.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(14.dp),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(64.dp)
+                            .clip(CircleShape)
+                            .background(colors.neon),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Lock,
+                            contentDescription = "Konfigurasi Firebase Diperlukan",
+                            tint = onNeon,
+                            modifier = Modifier.size(32.dp),
+                        )
+                    }
+
+                    Text(
+                        text = stringResource(R.string.firebase_missing_title),
+                        style = MaterialTheme.typography.titleLarge,
+                        color = colors.neon,
+                        textAlign = TextAlign.Center,
+                    )
+
+                    Text(
+                        text = stringResource(R.string.firebase_missing_subtitle),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = colors.textMuted,
+                        textAlign = TextAlign.Center,
+                    )
+                }
+            }
+        }
+    }
+}
+

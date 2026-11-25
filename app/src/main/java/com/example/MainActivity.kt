@@ -64,6 +64,7 @@ import com.example.data.ThemePreferences
 import com.example.data.ThemeSettings
 import com.example.ui.AuthScreen
 import com.example.ui.DawViewModel
+import com.example.ui.FirebaseConfigMissingScreen
 import com.example.ui.components.ThemeSelectorDialog
 import com.example.ui.screens.CloudExportScreen
 import com.example.ui.screens.DawTransportHeader
@@ -76,6 +77,7 @@ import com.example.ui.theme.DawThemePreset
 import com.example.ui.theme.SpatialDawTheme
 import com.example.ui.theme.StudioTheme
 import com.google.firebase.Firebase
+import com.google.firebase.FirebaseApp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.auth
 import com.google.firebase.firestore.FirebaseFirestore
@@ -134,6 +136,15 @@ fun AppNavigation(
     onSelectPreset: (DawThemePreset) -> Unit,
     onToggleDynamicColor: (Boolean) -> Unit,
 ) {
+    val context = LocalContext.current
+    val isFirebaseConfigured = remember(context) {
+        FirebaseApp.getApps(context).isNotEmpty()
+    }
+    if (!isFirebaseConfigured) {
+        FirebaseConfigMissingScreen()
+        return
+    }
+
     var currentUser by remember { mutableStateOf(Firebase.auth.currentUser) }
 
     DisposableEffect(Unit) {
