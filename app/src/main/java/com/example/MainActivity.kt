@@ -14,8 +14,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.Equalizer
+import androidx.compose.material.icons.filled.FolderSpecial
 import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.filled.Radar
 import androidx.compose.material.icons.filled.Tune
@@ -31,10 +31,8 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -48,7 +46,6 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.credentials.CredentialManager
 import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -62,9 +59,7 @@ import com.example.audio.DawAudioEngine
 import com.example.data.DawRepository
 import com.example.data.ThemePreferences
 import com.example.data.ThemeSettings
-import com.example.ui.AuthScreen
 import com.example.ui.DawViewModel
-import com.example.ui.FirebaseConfigMissingScreen
 import com.example.ui.components.ThemeSelectorDialog
 import com.example.ui.screens.CloudExportScreen
 import com.example.ui.screens.DawTransportHeader
@@ -72,15 +67,9 @@ import com.example.ui.screens.EqualizerPluginScreen
 import com.example.ui.screens.MixerScreen
 import com.example.ui.screens.SpatialRadarScreen
 import com.example.ui.screens.YouTubeDeckScreen
-import com.example.ui.signOutUser
 import com.example.ui.theme.DawThemePreset
 import com.example.ui.theme.SpatialDawTheme
 import com.example.ui.theme.StudioTheme
-import com.google.firebase.Firebase
-import com.google.firebase.FirebaseApp
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.auth.auth
-import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.launch
 
 private enum class StudioDestination(
@@ -92,7 +81,7 @@ private enum class StudioDestination(
     SPATIAL("spatial", R.string.tab_spatial, Icons.Filled.Radar),
     EQUALIZER("equalizer", R.string.tab_eq, Icons.Filled.Equalizer),
     YOUTUBE("youtube", R.string.tab_youtube, Icons.Filled.PlayCircle),
-    COLLAB("collab", R.string.tab_collab, Icons.Filled.Cloud),
+    COLLAB("collab", R.string.tab_collab, Icons.Filled.FolderSpecial),
 }
 
 class MainActivity : ComponentActivity() {
@@ -118,7 +107,7 @@ private fun SpatialDawRoot() {
         themePreset = themeSettings.preset,
         useDynamicColor = themeSettings.useDynamicColor,
     ) {
-        AppNavigation(
+        StudioMainScreen(
             themeSettings = themeSettings,
             onSelectPreset = { preset ->
                 scope.launch { themePreferences.setThemePreset(preset) }
@@ -131,73 +120,25 @@ private fun SpatialDawRoot() {
 }
 
 @Composable
-fun AppNavigation(
-    themeSettings: ThemeSettings,
-    onSelectPreset: (DawThemePreset) -> Unit,
-    onToggleDynamicColor: (Boolean) -> Unit,
-) {
-    val context = LocalContext.current
-    val isFirebaseConfigured = remember(context) {
-        FirebaseApp.getApps(context).isNotEmpty()
-    }
-    if (!isFirebaseConfigured) {
-        FirebaseConfigMissingScreen()
-        return
-    }
-
-    var currentUser by remember { mutableStateOf(Firebase.auth.currentUser) }
-
-    DisposableEffect(Unit) {
-        val listener = FirebaseAuth.AuthStateListener { auth ->
-            currentUser = auth.currentUser
-        }
-        Firebase.auth.addAuthStateListener(listener)
-        onDispose { Firebase.auth.removeAuthStateListener(listener) }
-    }
-
-    val user = currentUser
-    if (user == null) {
-        AuthScreen(onAuthSuccess = { currentUser = Firebase.auth.currentUser })
-    } else {
-        key(user.uid) {
-            StudioMainScreen(
-                currentUserId = user.uid,
-                themeSettings = themeSettings,
-                onSelectPreset = onSelectPreset,
-                onToggleDynamicColor = onToggleDynamicColor,
-            )
-        }
-    }
-}
-
-@Composable
 fun StudioMainScreen(
-    currentUserId: String,
     themeSettings: ThemeSettings,
     onSelectPreset: (DawThemePreset) -> Unit,
     onToggleDynamicColor: (Boolean) -> Unit,
 ) {
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
-    val credentialManager = remember(context) { CredentialManager.create(context) }
     val colors = StudioTheme.colors
     val selectedIconContrast = if (colors.neon.luminance() > 0.45f) Color.Black else Color.White
 
     var showThemeDialog by remember { mutableStateOf(false) }
 
     val viewModel: DawViewModel = viewModel(
-        key = currentUserId,
         factory = viewModelFactory {
             initializer {
                 val app = checkNotNull(this[APPLICATION_KEY]) {
                     "APPLICATION_KEY missing from CreationExtras"
                 }
-                val databaseId = app.getString(R.string.firestore_database_id)
-                val db = FirebaseFirestore.getInstance(databaseId)
                 DawViewModel(
-                    repository = DawRepository(db),
+                    repository = DawRepository(app),
                     audioEngine = DawAudioEngine(),
-                    currentUserId = currentUserId,
                 )
             }
         }
@@ -326,7 +267,7 @@ fun StudioMainScreen(
                         latencyMs = telemetry.estimatedLatencyMs,
                         latencyFrames = studioState.activeProject.latencyFrames,
                         isPlaying = telemetry.isPlaying,
-                        isSyncingCloud = studioState.isSyncingCloud,
+                        isSavingProject = studioState.isSavingProject,
                         onTogglePlay = viewModel::togglePlayback,
                         onBpmDelta = { delta ->
                             viewModel.updateActiveProject {
@@ -334,11 +275,7 @@ fun StudioMainScreen(
                             }
                         },
                         onOpenThemePicker = { showThemeDialog = true },
-                        onSaveCloud = viewModel::saveActiveProjectToCloud,
-                        onSignOut = {
-                            viewModel.audioEngine.stopPlayback()
-                            signOutUser(credentialManager, scope)
-                        },
+                        onSaveProject = viewModel::saveActiveProject,
                     )
 
                     Box(modifier = Modifier.weight(1f)) {
@@ -376,7 +313,6 @@ fun StudioMainScreen(
                             }
                             composable(StudioDestination.COLLAB.route) {
                                 CloudExportScreen(
-                                    currentUserId = currentUserId,
                                     uiState = studioState,
                                     projectsState = projectsState,
                                     notesState = notesState,

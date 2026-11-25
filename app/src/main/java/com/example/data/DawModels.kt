@@ -1,11 +1,5 @@
 package com.example.data
 
-import androidx.annotation.Keep
-import com.google.firebase.Timestamp
-import com.google.firebase.firestore.DocumentId
-import com.google.firebase.firestore.IgnoreExtraProperties
-import com.google.firebase.firestore.ServerTimestamp
-
 enum class SpatialPattern(val label: String) {
     CIRCULAR("8D Circular"),
     WAVE("9D Wave"),
@@ -25,14 +19,8 @@ enum class VoiceEffectPreset(val label: String) {
     CYBER("Cyber Pitch")
 }
 
-@Keep
-@IgnoreExtraProperties
 data class DawProject(
-    @DocumentId val id: String = "",
-    val ownerId: String = "",
-    val ownerName: String = "",
-    val memberUids: List<String> = emptyList(),
-    val inviteCode: String = "",
+    val id: String = "",
     val title: String = "Midnight 8D Session",
     val bpm: Long = 124L,
     val spatialPattern: String = SpatialPattern.CIRCULAR.name,
@@ -55,32 +43,16 @@ data class DawProject(
     val youtubeGain: Double = 0.85,
     val masterGain: Double = 0.85,
     val stepPattern: List<Long> = listOf(3L, 0L, 2L, 0L, 3L, 0L, 1L, 2L, 3L, 0L, 2L, 0L, 3L, 1L, 2L, 1L),
-    @ServerTimestamp val createdAt: Timestamp? = null,
-    @ServerTimestamp val updatedAt: Timestamp? = null,
+    val createdAtMillis: Long = 0L,
+    val updatedAtMillis: Long = 0L,
 )
 
-@Keep
-@IgnoreExtraProperties
-data class ProjectInvite(
-    @DocumentId val id: String = "",
-    val projectId: String = "",
-    val projectTitle: String = "",
-    val ownerId: String = "",
-    val ownerName: String = "",
-    @ServerTimestamp val createdAt: Timestamp? = null,
-)
-
-@Keep
-@IgnoreExtraProperties
 data class ProjectNote(
-    @DocumentId val id: String = "",
+    val id: String = "",
     val projectId: String = "",
-    val authorId: String = "",
-    val authorName: String = "",
     val message: String = "",
     val barPosition: Long = 1L,
-    val memberUids: List<String> = emptyList(),
-    @ServerTimestamp val createdAt: Timestamp? = null,
+    val createdAtMillis: Long = 0L,
 )
 
 data class YouTubePresetVideo(

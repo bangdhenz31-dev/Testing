@@ -23,14 +23,13 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.CloudDone
-import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.GroupAdd
+import androidx.compose.material.icons.filled.FolderSpecial
 import androidx.compose.material.icons.filled.Palette
-import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -55,10 +54,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
-import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -75,7 +72,6 @@ import com.example.ui.theme.StudioTheme
 
 @Composable
 fun CloudExportScreen(
-    currentUserId: String,
     uiState: StudioUiState,
     projectsState: UiState<List<DawProject>>,
     notesState: UiState<List<ProjectNote>>,
@@ -85,14 +81,12 @@ fun CloudExportScreen(
     onToggleDynamicColor: (Boolean) -> Unit,
 ) {
     val context = LocalContext.current
-    val clipboard = LocalClipboardManager.current
     val colors = StudioTheme.colors
     val onNeon = if (colors.neon.luminance() > 0.45f) Color.Black else Color.White
     val onGreen = if (colors.green.luminance() > 0.45f) Color.Black else Color.White
 
     var selectedBitDepth by remember { mutableIntStateOf(24) }
     var newProjectTitle by remember { mutableStateOf("") }
-    var inviteCodeInput by remember { mutableStateOf("") }
     var noteInput by remember { mutableStateOf("") }
     var noteBar by remember { mutableIntStateOf(1) }
 
@@ -251,54 +245,37 @@ fun CloudExportScreen(
             }
         }
 
-        // Cloud Project Creation & Invite Join
+        // Local Project Manager Card
         item {
             CyberStudioCard(borderColor = colors.neon.copy(alpha = 0.5f)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Filled.CloudDone, contentDescription = null, tint = colors.neon)
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        text = "KOLABORASI PROYEK CLOUD",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = colors.neon,
-                    )
-                }
-
-                if (uiState.activeProject.id.isNotBlank()) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(colors.bg)
-                            .border(1.dp, colors.purple.copy(alpha = 0.6f), RoundedCornerShape(12.dp))
-                            .padding(horizontal = 12.dp, vertical = 10.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically,
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Filled.FolderSpecial, contentDescription = null, tint = colors.neon)
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = "MANAJER PROYEK LOKAL",
+                            style = MaterialTheme.typography.titleMedium,
+                            color = colors.neon,
+                        )
+                    }
+                    OutlinedButton(
+                        onClick = { viewModel.saveActiveProject() },
+                        enabled = !uiState.isSavingProject,
+                        border = BorderStroke(1.dp, colors.neon),
+                        shape = RoundedCornerShape(10.dp),
+                        modifier = Modifier.testTag("save_active_project_button"),
                     ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "Kode Undangan Kolaborasi (${uiState.activeProject.memberUids.size} anggota)",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = colors.textMuted,
-                            )
-                            Text(
-                                text = uiState.activeProject.inviteCode,
-                                style = MaterialTheme.typography.titleMedium,
-                                color = colors.yellow,
-                            )
-                        }
-                        IconButton(
-                            onClick = {
-                                clipboard.setText(AnnotatedString(uiState.activeProject.inviteCode))
-                            },
-                            modifier = Modifier.size(48.dp),
-                        ) {
-                            Icon(Icons.Filled.ContentCopy, contentDescription = "Salin Kode Undangan", tint = colors.neon)
-                        }
+                        Icon(Icons.Filled.Save, contentDescription = null, tint = colors.neon, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text("Simpan Mix", color = colors.neon)
                     }
                 }
 
-                // New Cloud Project Row
+                // New Local Project Row
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
@@ -320,62 +297,26 @@ fun CloudExportScreen(
                     )
                     Button(
                         onClick = {
-                            viewModel.createCloudProject(newProjectTitle)
+                            viewModel.createLocalProject(newProjectTitle)
                             newProjectTitle = ""
                         },
-                        enabled = !uiState.isSyncingCloud,
+                        enabled = !uiState.isSavingProject,
                         modifier = Modifier
                             .height(52.dp)
                             .testTag("create_project_button"),
                         colors = ButtonDefaults.buttonColors(containerColor = colors.neon, contentColor = onNeon),
                         shape = RoundedCornerShape(12.dp),
                     ) {
-                        Icon(Icons.Filled.Add, contentDescription = "Buat Proyek")
-                    }
-                }
-
-                // Join Invite Code Row
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    OutlinedTextField(
-                        value = inviteCodeInput,
-                        onValueChange = { inviteCodeInput = it.uppercase() },
-                        label = { Text("Gabung Kode Undangan") },
-                        singleLine = true,
-                        modifier = Modifier
-                            .weight(1f)
-                            .testTag("join_invite_input"),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = colors.purple,
-                            unfocusedBorderColor = colors.border,
-                        ),
-                    )
-                    Button(
-                        onClick = {
-                            viewModel.joinProjectByCode(inviteCodeInput)
-                            inviteCodeInput = ""
-                        },
-                        enabled = inviteCodeInput.trim().length >= 6 && !uiState.isSyncingCloud,
-                        modifier = Modifier
-                            .height(52.dp)
-                            .testTag("join_project_button"),
-                        colors = ButtonDefaults.buttonColors(containerColor = colors.purple, contentColor = Color.White),
-                        shape = RoundedCornerShape(12.dp),
-                    ) {
-                        Icon(Icons.Filled.GroupAdd, contentDescription = "Gabung Proyek")
+                        Icon(Icons.Filled.Add, contentDescription = "Buat Proyek Baru")
                     }
                 }
             }
         }
 
-        // Cloud Projects List
+        // Saved Local Projects List
         item {
             Text(
-                text = "PROYEK CLOUD TERHUBUNG",
+                text = "PROYEK TERSIMPAN DI PERANGKAT",
                 style = MaterialTheme.typography.titleMedium,
                 color = colors.yellow,
                 modifier = Modifier.padding(horizontal = 4.dp),
@@ -402,7 +343,7 @@ fun CloudExportScreen(
                     item {
                         CyberStudioCard {
                             Text(
-                                text = "Belum ada proyek tersimpan. Buat proyek baru di atas untuk menyinkronkan mix dan berkolaborasi.",
+                                text = "Belum ada proyek tersimpan. Buat proyek baru di atas untuk menyimpan mix, EQ, dan preset 8D di HP Anda.",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = colors.textMuted,
                             )
@@ -433,18 +374,16 @@ fun CloudExportScreen(
                                         overflow = TextOverflow.Ellipsis,
                                     )
                                     Text(
-                                        text = "${proj.bpm} BPM · ${proj.spatialPattern} · Kode: ${proj.inviteCode}",
+                                        text = "${proj.bpm} BPM · ${proj.spatialPattern}",
                                         style = MaterialTheme.typography.labelSmall,
                                         color = colors.textMuted,
                                     )
                                 }
-                                if (proj.ownerId == currentUserId) {
-                                    IconButton(
-                                        onClick = { viewModel.deleteCloudProject(proj) },
-                                        modifier = Modifier.size(48.dp),
-                                    ) {
-                                        Icon(Icons.Filled.Delete, contentDescription = "Hapus Proyek", tint = colors.live)
-                                    }
+                                IconButton(
+                                    onClick = { viewModel.deleteLocalProject(proj) },
+                                    modifier = Modifier.size(48.dp),
+                                ) {
+                                    Icon(Icons.Filled.Delete, contentDescription = "Hapus Proyek", tint = colors.live)
                                 }
                             }
                         }
@@ -453,12 +392,12 @@ fun CloudExportScreen(
             }
         }
 
-        // Real-Time Producer Notes for Active Cloud Project
+        // Local Producer Notes for Active Project
         if (uiState.activeProject.id.isNotBlank()) {
             item {
                 CyberStudioCard(borderColor = colors.pink.copy(alpha = 0.5f)) {
                     Text(
-                        text = "CATATAN KOLABORASI PRODUSER",
+                        text = "CATATAN PRODUKSI",
                         style = MaterialTheme.typography.titleMedium,
                         color = colors.pink,
                     )
@@ -480,7 +419,7 @@ fun CloudExportScreen(
                         )
                         Button(
                             onClick = {
-                                viewModel.addCollaborationNote(noteInput, noteBar.toLong())
+                                viewModel.addProjectNote(noteInput, noteBar.toLong())
                                 noteInput = ""
                                 noteBar = (noteBar % 16) + 1
                             },
@@ -491,7 +430,7 @@ fun CloudExportScreen(
                             colors = ButtonDefaults.buttonColors(containerColor = colors.pink, contentColor = Color.White),
                             shape = RoundedCornerShape(12.dp),
                         ) {
-                            Icon(Icons.Filled.Send, contentDescription = "Kirim Catatan")
+                            Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Simpan Catatan")
                         }
                     }
 
@@ -499,7 +438,7 @@ fun CloudExportScreen(
                         is UiState.Success -> {
                             if (notesState.data.isEmpty()) {
                                 Text(
-                                    text = "Belum ada catatan produser pada proyek ini.",
+                                    text = "Belum ada catatan produksi pada proyek ini.",
                                     style = MaterialTheme.typography.labelMedium,
                                     color = colors.textMuted,
                                 )
@@ -512,17 +451,31 @@ fun CloudExportScreen(
                                                 .clip(RoundedCornerShape(10.dp))
                                                 .background(colors.bg)
                                                 .border(1.dp, colors.border, RoundedCornerShape(10.dp))
-                                                .padding(10.dp),
-                                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                                .padding(horizontal = 10.dp, vertical = 8.dp),
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            verticalAlignment = Alignment.CenterVertically,
                                         ) {
-                                            Text(
-                                                text = "Bar ${note.barPosition}",
-                                                style = MaterialTheme.typography.labelSmall,
-                                                color = colors.yellow,
-                                            )
-                                            Column {
-                                                Text(note.authorName, style = MaterialTheme.typography.labelMedium, color = colors.neon)
-                                                Text(note.message, style = MaterialTheme.typography.bodyMedium, color = colors.textPrimary)
+                                            Row(
+                                                modifier = Modifier.weight(1f),
+                                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                                verticalAlignment = Alignment.CenterVertically,
+                                            ) {
+                                                Text(
+                                                    text = "Bar ${note.barPosition}",
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = colors.yellow,
+                                                )
+                                                Text(
+                                                    text = note.message,
+                                                    style = MaterialTheme.typography.bodyMedium,
+                                                    color = colors.textPrimary,
+                                                )
+                                            }
+                                            IconButton(
+                                                onClick = { viewModel.deleteProjectNote(note.id) },
+                                                modifier = Modifier.size(48.dp),
+                                            ) {
+                                                Icon(Icons.Filled.Delete, contentDescription = "Hapus Catatan", tint = colors.textMuted)
                                             }
                                         }
                                     }

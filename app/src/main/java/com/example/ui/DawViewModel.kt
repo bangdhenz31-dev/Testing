@@ -15,7 +15,6 @@ import com.example.data.SpatialPattern
 import com.example.data.VoiceEffectPreset
 import com.example.data.YouTubeCatalog
 import com.example.data.YouTubePresetVideo
-import com.google.firebase.firestore.FirebaseFirestoreException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -85,7 +84,7 @@ data class StudioUiState(
     val youtubeLoopEndSec: Float? = null,
     val youtubeLoopEnabled: Boolean = false,
     val syncDawWithYoutube: Boolean = false,
-    val isSyncingCloud: Boolean = false,
+    val isSavingProject: Boolean = false,
     val isExporting: Boolean = false,
     val lastExportedFile: File? = null,
     val statusMessage: String? = null,
@@ -94,7 +93,6 @@ data class StudioUiState(
 class DawViewModel(
     private val repository: DawRepository,
     val audioEngine: DawAudioEngine,
-    private val currentUserId: String,
 ) : ViewModel() {
 
     private val _studioState = MutableStateFlow(StudioUiState())
@@ -106,7 +104,7 @@ class DawViewModel(
     val telemetry: StateFlow<DawTelemetry> = audioEngine.telemetry
 
     val projectsState: StateFlow<UiState<List<DawProject>>> =
-        repository.observeUserProjects(currentUserId)
+        repository.observeProjects()
             .map<List<DawProject>, UiState<List<DawProject>>> { list ->
                 if (list.isNotEmpty() && _studioState.value.activeProject.id.isBlank()) {
                     loadProjectIntoEngine(list.first())
@@ -114,13 +112,9 @@ class DawViewModel(
                 UiState.Success(list)
             }
             .catch { error ->
-                val firestoreError = generateSequence(error) { it.cause }
-                    .filterIsInstance<FirebaseFirestoreException>()
-                    .firstOrNull()
-                if (firestoreError == null && error is CancellationException) throw error
-                val rootError = firestoreError ?: error
-                Log.w(TAG, "Error observing projects", rootError)
-                emit(UiState.Error(rootError.message ?: "Gagal memuat proyek cloud"))
+                if (error is CancellationException) throw error
+                Log.w(TAG, "Error observing local projects", error)
+                emit(UiState.Error(error.message ?: "Gagal memuat proyek lokal"))
             }
             .stateIn(
                 scope = viewModelScope,
@@ -136,16 +130,12 @@ class DawViewModel(
             if (projectId.isBlank()) {
                 flowOf<UiState<List<ProjectNote>>>(UiState.Success(emptyList()))
             } else {
-                repository.observeProjectNotes(projectId, currentUserId)
+                repository.observeProjectNotes(projectId)
                     .map<List<ProjectNote>, UiState<List<ProjectNote>>> { UiState.Success(it) }
                     .catch { error ->
-                        val firestoreError = generateSequence(error) { it.cause }
-                            .filterIsInstance<FirebaseFirestoreException>()
-                            .firstOrNull()
-                        if (firestoreError == null && error is CancellationException) throw error
-                        val rootError = firestoreError ?: error
-                        Log.w(TAG, "Error observing project notes", rootError)
-                        emit(UiState.Error(rootError.message ?: "Gagal memuat catatan kolaborasi"))
+                        if (error is CancellationException) throw error
+                        Log.w(TAG, "Error observing project notes", error)
+                        emit(UiState.Error(error.message ?: "Gagal memuat catatan produksi"))
                     }
             }
         }.stateIn(
@@ -564,60 +554,58 @@ class DawViewModel(
         }
     }
 
-    // Cloud Collaboration Operations
-    fun createCloudProject(title: String) {
+    // Local Room Project Operations
+    fun createLocalProject(title: String) {
         viewModelScope.launch {
-            _studioState.update { it.copy(isSyncingCloud = true) }
+            _studioState.update { it.copy(isSavingProject = true) }
             val result = repository.createProject(title, _studioState.value.activeProject)
             result.onSuccess { created ->
                 loadProjectIntoEngine(created)
-                postMessage("Proyek '${created.title}' dibuat! Kode undangan: ${created.inviteCode}")
+                postMessage("Proyek '${created.title}' tersimpan di perangkat!")
             }.onFailure { err ->
-                postMessage("Gagal membuat proyek: ${err.localizedMessage ?: "Kesalahan Firestore"}")
+                postMessage("Gagal membuat proyek: ${err.localizedMessage ?: "Kesalahan penyimpanan"}")
             }
-            _studioState.update { it.copy(isSyncingCloud = false) }
+            _studioState.update { it.copy(isSavingProject = false) }
         }
     }
 
-    fun saveActiveProjectToCloud() {
+    fun saveActiveProject() {
         val current = _studioState.value.activeProject
         if (current.id.isBlank()) {
-            createCloudProject(current.title)
+            createLocalProject(current.title)
             return
         }
         viewModelScope.launch {
-            _studioState.update { it.copy(isSyncingCloud = true) }
+            _studioState.update { it.copy(isSavingProject = true) }
             repository.saveProjectState(current)
-                .onSuccess { postMessage("Mix & pengaturan DSP tersinkron ke Cloud!") }
-                .onFailure { err -> postMessage("Gagal sinkronisasi: ${err.localizedMessage}") }
-            _studioState.update { it.copy(isSyncingCloud = false) }
+                .onSuccess { postMessage("Mix & pengaturan DSP tersimpan di perangkat!") }
+                .onFailure { err -> postMessage("Gagal menyimpan: ${err.localizedMessage}") }
+            _studioState.update { it.copy(isSavingProject = false) }
         }
     }
 
-    fun joinProjectByCode(code: String) {
-        viewModelScope.launch {
-            _studioState.update { it.copy(isSyncingCloud = true) }
-            repository.joinProjectByInviteCode(code)
-                .onSuccess { postMessage("Berhasil bergabung ke proyek kolaborasi!") }
-                .onFailure { err -> postMessage("Gagal bergabung: ${err.localizedMessage}") }
-            _studioState.update { it.copy(isSyncingCloud = false) }
-        }
-    }
-
-    fun addCollaborationNote(message: String, barPosition: Long) {
+    fun addProjectNote(message: String, barPosition: Long) {
         val active = _studioState.value.activeProject
         if (active.id.isBlank()) {
-            postMessage("Simpan proyek ke cloud terlebih dahulu untuk menulis catatan kolaborasi.")
+            postMessage("Simpan proyek terlebih dahulu untuk menulis catatan produksi.")
             return
         }
         viewModelScope.launch {
             repository.addProjectNote(active, message, barPosition)
-                .onSuccess { postMessage("Catatan produser dikirim.") }
-                .onFailure { err -> postMessage("Gagal mengirim catatan: ${err.localizedMessage}") }
+                .onSuccess { postMessage("Catatan produksi disimpan.") }
+                .onFailure { err -> postMessage("Gagal menyimpan catatan: ${err.localizedMessage}") }
         }
     }
 
-    fun deleteCloudProject(project: DawProject) {
+    fun deleteProjectNote(noteId: String) {
+        viewModelScope.launch {
+            repository.deleteNote(noteId)
+                .onSuccess { postMessage("Catatan dihapus.") }
+                .onFailure { err -> postMessage("Gagal menghapus catatan: ${err.localizedMessage}") }
+        }
+    }
+
+    fun deleteLocalProject(project: DawProject) {
         viewModelScope.launch {
             repository.deleteProject(project)
                 .onSuccess {

@@ -19,13 +19,12 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -82,12 +81,11 @@ fun DawTransportHeader(
     latencyMs: Float,
     latencyFrames: Long,
     isPlaying: Boolean,
-    isSyncingCloud: Boolean,
+    isSavingProject: Boolean,
     onTogglePlay: () -> Unit,
     onBpmDelta: (Long) -> Unit,
     onOpenThemePicker: () -> Unit,
-    onSaveCloud: () -> Unit,
-    onSignOut: () -> Unit,
+    onSaveProject: () -> Unit,
 ) {
     val colors = StudioTheme.colors
     val playBg = if (isPlaying) colors.pink else colors.neon
@@ -140,13 +138,13 @@ fun DawTransportHeader(
                     }
 
                     IconButton(
-                        onClick = onSaveCloud,
-                        enabled = !isSyncingCloud,
+                        onClick = onSaveProject,
+                        enabled = !isSavingProject,
                         modifier = Modifier
                             .size(48.dp)
-                            .testTag("cloud_sync_button"),
+                            .testTag("save_project_button"),
                     ) {
-                        if (isSyncingCloud) {
+                        if (isSavingProject) {
                             CircularProgressIndicator(
                                 modifier = Modifier.size(20.dp),
                                 color = colors.neon,
@@ -154,24 +152,11 @@ fun DawTransportHeader(
                             )
                         } else {
                             Icon(
-                                imageVector = Icons.Filled.CloudUpload,
-                                contentDescription = "Simpan ke Cloud",
+                                imageVector = Icons.Filled.Save,
+                                contentDescription = "Simpan Proyek Lokal",
                                 tint = colors.neon,
                             )
                         }
-                    }
-
-                    IconButton(
-                        onClick = onSignOut,
-                        modifier = Modifier
-                            .size(48.dp)
-                            .testTag("sign_out_button"),
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.Logout,
-                            contentDescription = "Keluar Akun",
-                            tint = colors.textMuted,
-                        )
                     }
                 }
             }
