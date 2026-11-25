@@ -13,17 +13,25 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Setup JDK
+      - name: Setup JDK 17
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
-      - name: Grant execute permission for gradlew
-        run: chmod +x gradlew
+      - name: Install Gradle
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gradle
+
+      - name: Check Project
+        run: |
+          gradle --version
+          ls -la
+          gradle tasks --all
 
       - name: Build Debug APK
-        run: ./gradlew :app:assembleDebug --stacktrace
+        run: gradle assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
@@ -32,8 +40,8 @@ jobs:
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
 
-      - name: Build Android Test APK
-        run: ./gradlew :app:assembleDebugAndroidTest
+      - name: Build Android Test
+        run: gradle assembleDebugAndroidTest
 
       - name: Upload Test APK
         uses: actions/upload-artifact@v4
