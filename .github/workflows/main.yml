@@ -33,13 +33,13 @@ jobs:
           distribution: temurin
           java-version: "21"
 
-      - name: Accept Android SDK Licenses & Install SDK 36
+      - name: Accept Android SDK Licenses & Install SDK 36.1
         run: |
-          SDK_ROOT="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
           SDKMANAGER=$(find "$SDK_ROOT/cmdline-tools" -name "sdkmanager" 2>/dev/null | head -n 1)
           if [ -n "$SDKMANAGER" ]; then
-            yes | "$SDKMANAGER" --licenses > /dev/null 2>&1 || true
-            "$SDKMANAGER" "platform-tools" "platforms;android-36" "platforms;android-36.1" || true
+            yes | "$SDKMANAGER" --sdk_root="$SDK_ROOT" --licenses > /dev/null 2>&1 || true
+            "$SDKMANAGER" --sdk_root="$SDK_ROOT" "platform-tools" "build-tools;36.0.0" "platforms;android-36" "platforms;android-36.1" || true
           fi
 
       - name: Prepare Debug Keystore
@@ -63,7 +63,7 @@ jobs:
 
       - name: Build Debug APK
         working-directory: ${{ steps.locate.outputs.project_dir }}
-        run: gradle :app:assembleDebug --no-daemon --stacktrace
+        run: gradle :app:assembleDebug --no-daemon --console=plain --stacktrace
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
