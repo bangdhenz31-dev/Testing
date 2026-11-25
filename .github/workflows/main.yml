@@ -19,21 +19,11 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Install Gradle
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y gradle
-
-      - name: Check Project Structure
-        run: |
-          echo "=== PROJECT FILES ==="
-          find . -maxdepth 3 -type f | sort
-
-      - name: Check Available Gradle Tasks
-        run: gradle tasks --all
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
 
       - name: Build Debug APK
-        run: gradle assembleDebug --stacktrace
+        run: ./gradlew :app:assembleDebug --stacktrace
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
@@ -43,7 +33,7 @@ jobs:
           if-no-files-found: error
 
       - name: Build Android Test APK
-        run: gradle assembleDebugAndroidTest
+        run: ./gradlew :app:assembleDebugAndroidTest
 
       - name: Upload Test APK
         uses: actions/upload-artifact@v4
