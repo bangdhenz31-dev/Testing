@@ -3,7 +3,10 @@ package com.example.ui
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
+import android.content.pm.PackageManager
+import android.os.Build
 import android.util.Log
+import java.security.MessageDigest
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -74,6 +77,24 @@ private tailrec fun Context.findActivity(): Activity? = when (this) {
     is Activity -> this
     is ContextWrapper -> baseContext.findActivity()
     else -> null
+}
+
+@Suppress("DEPRECATION")
+private fun getSigningSha1(context: Context): String? {
+    return try {
+        val pm = context.packageManager
+        val signatures = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            val info = pm.getPackageInfo(context.packageName, PackageManager.GET_SIGNING_CERTIFICATES)
+            info.signingInfo?.apkContentsSigners
+        } else {
+            pm.getPackageInfo(context.packageName, PackageManager.GET_SIGNATURES).signatures
+        }
+        val certBytes = signatures?.firstOrNull()?.toByteArray() ?: return null
+        val digest = MessageDigest.getInstance("SHA-1").digest(certBytes)
+        digest.joinToString(":") { "%02X".format(it) }
+    } catch (_: Exception) {
+        null
+    }
 }
 
 private fun resolveDefaultWebClientId(context: Context): String? {
@@ -165,10 +186,14 @@ fun onGoogleSignInClicked(
         } catch (e: GetCredentialCancellationException) {
             Log.w("Auth", "Google Sign-In flow cancelled or dismissed: ${e.message}", e)
             onAuthCancelled()
-            onAuthError("Login Google dibatalkan atau gagal menampilkan akun (${e.message ?: "dibatalkan"}).")
+            val sha1 = getSigningSha1(context)
+            val shaSuffix = if (sha1 != null) "\nSHA-1 APK: $sha1" else ""
+            onAuthError("Login Google dibatalkan atau gagal menampilkan akun (${e.message ?: "dibatalkan"}).$shaSuffix")
         } catch (e: GetCredentialException) {
             Log.e("Auth", "Credential Manager error [${e.type}]: ${e.message}", e)
-            onAuthError("Login gagal [${e.javaClass.simpleName}]: ${e.errorMessage ?: e.message ?: e.type}")
+            val sha1 = getSigningSha1(context)
+            val shaSuffix = if (sha1 != null) "\nSHA-1 APK: $sha1" else ""
+            onAuthError("Login gagal [${e.javaClass.simpleName}]: ${e.errorMessage ?: e.message ?: e.type}$shaSuffix")
         } catch (e: Exception) {
             Log.e("Auth", "Google Sign-In failed", e)
             onAuthError("Login gagal [${e.javaClass.simpleName}]: ${e.localizedMessage ?: e.message ?: "Gagal masuk dengan Google."}")
