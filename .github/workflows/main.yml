@@ -1,9 +1,6 @@
 on:
-  push: 
+push: 
 jobs:
-  test:
-    # ...
-
   apk:
     name: Generate APK
     runs-on: ubuntu-latest
