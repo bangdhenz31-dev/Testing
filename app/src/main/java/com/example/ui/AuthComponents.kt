@@ -2,6 +2,7 @@ package com.example.ui
 
 import android.app.Activity
 import android.content.Context
+import android.content.ContextWrapper
 import android.util.Log
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -53,6 +54,7 @@ import androidx.credentials.CredentialManager
 import androidx.credentials.CustomCredential
 import androidx.credentials.GetCredentialRequest
 import androidx.credentials.exceptions.GetCredentialCancellationException
+import androidx.credentials.exceptions.GetCredentialException
 import com.example.R
 import com.example.ui.theme.StudioTheme
 import com.google.android.libraries.identity.googleid.GetGoogleIdOption
@@ -67,6 +69,12 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
+
+private tailrec fun Context.findActivity(): Activity? = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findActivity()
+    else -> null
+}
 
 private fun resolveDefaultWebClientId(context: Context): String? {
     val resId = context.resources.getIdentifier(
@@ -141,7 +149,7 @@ fun onGoogleSignInClicked(
 
     scope.launch {
         try {
-            val activityContext = context as? Activity
+            val activityContext = context.findActivity()
             if (activityContext == null) {
                 onAuthError("Konteks Activity diperlukan untuk Google Sign-In.")
                 return@launch
@@ -152,14 +160,18 @@ fun onGoogleSignInClicked(
                 Firebase.auth.signInWithCredential(GoogleAuthProvider.getCredential(token, null)).await()
                 onAuthSuccess()
             } else {
-                onAuthError("Tipe kredensial tidak dikenal.")
+                onAuthError("Tipe kredensial tidak dikenal (${cred.type}).")
             }
         } catch (e: GetCredentialCancellationException) {
             Log.w("Auth", "Google Sign-In flow cancelled or dismissed: ${e.message}", e)
             onAuthCancelled()
+            onAuthError("Login Google dibatalkan atau gagal menampilkan akun (${e.message ?: "dibatalkan"}).")
+        } catch (e: GetCredentialException) {
+            Log.e("Auth", "Credential Manager error [${e.type}]: ${e.message}", e)
+            onAuthError("Login gagal [${e.javaClass.simpleName}]: ${e.errorMessage ?: e.message ?: e.type}")
         } catch (e: Exception) {
             Log.e("Auth", "Google Sign-In failed", e)
-            onAuthError(e.localizedMessage ?: "Gagal masuk dengan Google.")
+            onAuthError("Login gagal [${e.javaClass.simpleName}]: ${e.localizedMessage ?: e.message ?: "Gagal masuk dengan Google."}")
         }
     }
 }
